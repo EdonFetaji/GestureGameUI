@@ -106,22 +106,28 @@ class UIController:
 
         # Create semi-transparent overlay
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, guide_y - 10), (300, h - 10), (30, 30, 30), -1)
+        cv2.rectangle(overlay, (10, guide_y - 10), (320, h - 10), (30, 30, 30), -1)
         frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
 
         # Guide title
-        cv2.putText(frame, "POSE GUIDE:", (20, guide_y + 15),
+        cv2.putText(frame, "GESTURE GUIDE:", (20, guide_y + 15),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 1)
 
-        # Individual gesture instructions - UPDATED
+        # Individual gesture instructions - UPDATED FOR NEW GESTURES
         cv2.putText(frame, "Fist = DUCK", (20, guide_y + 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
         cv2.putText(frame, "Index up = JUMP", (20, guide_y + 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-        cv2.putText(frame, "Thumb left = LEFT", (20, guide_y + 80),
+        cv2.putText(frame, "Victory sign = LEFT", (20, guide_y + 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-        cv2.putText(frame, "Thumb right = RIGHT", (20, guide_y + 100),
+        cv2.putText(frame, "I love you = RIGHT", (20, guide_y + 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+
+        # Add small emoji-like indicators
+        cv2.putText(frame, "V", (280, guide_y + 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+        cv2.putText(frame, "Y", (280, guide_y + 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 128, 0), 2)
 
         return frame
 

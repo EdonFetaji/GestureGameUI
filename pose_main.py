@@ -1,6 +1,7 @@
 """
 Main program using POSE-BASED gesture control
 Much more stable than motion-based control!
+Uses static hand gestures - no movement needed!
 """
 
 from pose_gesture_controller import PoseGestureController
@@ -21,11 +22,11 @@ def main():
     print("  P     - Switch game profile")
     print("  Q     - Quit")
     print("=" * 60)
-    print("\nGestures:")
+    print("\nGestures (STATIC - no movement needed):")
     print("  FIST (closed hand)  → DUCK")
     print("  INDEX finger up     → JUMP")
-    print("  Hand on LEFT side   → LEFT")
-    print("  Hand on RIGHT side  → RIGHT")
+    print("  VICTORY (✌️)        → LEFT")
+    print("  I LOVE YOU (🤟)     → RIGHT")
     print("=" * 60)
 
     # Initialize all components
@@ -33,7 +34,7 @@ def main():
     ui = UIOverlay()
     controller = GameController()
     perf = PerformanceTracker()
-    ui_controller = UIController()  # New UI controller
+    ui_controller = UIController()
 
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)

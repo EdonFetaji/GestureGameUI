@@ -1,12 +1,12 @@
 """
-Pose-Based Gesture Recognition - MUCH MORE STABLE
+Pose-Based Gesture Recognition - HIGHLY STABLE
 Uses static hand poses instead of motion tracking
 
 Gestures:
 - FIST (all fingers closed) = DUCK
 - ONE FINGER (index up) = JUMP
-- Index finger moving LEFT = LEFT
-- Index finger moving RIGHT = RIGHT
+- VICTORY (index + middle fingers) = LEFT
+- I LOVE YOU (thumb + index + pinky) = RIGHT
 - OPEN PALM (all fingers up) = IDLE
 """
 
@@ -31,11 +31,11 @@ class PoseGestureController:
         print("Initializing POSE-BASED GestureController...")
         print("=" * 60)
         print("Gestures:")
-        print("  FIST (closed hand)     → DUCK")
-        print("  INDEX FINGER UP        → JUMP")
-        print("  Index finger LEFT      → LEFT")
-        print("  Index finger RIGHT     → RIGHT")
-        print("  OPEN PALM              → IDLE")
+        print("  FIST (closed hand)        → DUCK")
+        print("  INDEX FINGER UP           → JUMP")
+        print("  VICTORY (✌️)              → LEFT")
+        print("  I LOVE YOU (🤟)           → RIGHT")
+        print("  OPEN PALM                 → IDLE")
         print("=" * 60)
 
         self.mp_hands = mp.solutions.hands
@@ -50,11 +50,6 @@ class PoseGestureController:
         self.last_trigger_time = 0.0
         self.last_gesture = "IDLE"
         self.frames_without_hand = 0
-
-        # ADDED: Track previous index finger position for movement detection
-        self.prev_index_x = None
-        self.prev_index_y = None
-        self.movement_threshold = 0.05
 
         print("✓ POSE GestureController ready!\n")
 
@@ -97,80 +92,38 @@ class PoseGestureController:
 
         return fingers, sum(fingers.values())
 
-    def _detect_index_movement(self, landmarks):
-        """
-        COPIED FROM JUPYTER NOTEBOOK:
-        Detect LEFT/RIGHT movement based on index finger tip movement
-        Returns: "LEFT", "RIGHT", or "NEUTRAL"
-        """
-        index_tip = landmarks.landmark[8]  # Index finger tip
-
-        # Initialize on first frame
-        if self.prev_index_x is None or self.prev_index_y is None:
-            self.prev_index_x = index_tip.x
-            self.prev_index_y = index_tip.y
-            return "NEUTRAL"
-
-        # Calculate movement delta
-        delta_x = index_tip.x - self.prev_index_x
-        delta_y = index_tip.y - self.prev_index_y
-
-        # Update previous position
-        self.prev_index_x = index_tip.x
-        self.prev_index_y = index_tip.y
-
-        if self.debug:
-            print(f"    [DEBUG] Index movement delta_x: {delta_x:.3f}, delta_y: {delta_y:.3f}")
-
-        # Check if movement is significant
-        if abs(delta_x) > self.movement_threshold or abs(delta_y) > self.movement_threshold:
-            # Prioritize horizontal movement
-            if abs(delta_x) > abs(delta_y):
-                # FIXED: Swapped LEFT and RIGHT to account for mirroring
-                if delta_x < -self.movement_threshold:
-                    if self.debug:
-                        print(f"    [DEBUG] → Index moving RIGHT")
-                    return "RIGHT"  # Swapped from LEFT
-                elif delta_x > self.movement_threshold:
-                    if self.debug:
-                        print(f"    [DEBUG] → Index moving LEFT")
-                    return "LEFT"  # Swapped from RIGHT
-
-        return "NEUTRAL"
-
     def _classify_pose(self, landmarks):
         """Classify the hand pose into a gesture"""
         fingers, count = self._count_extended_fingers(landmarks)
-        index_movement = self._detect_index_movement(landmarks)
 
         if self.debug:
-            print(f"    [DEBUG] Finger count: {count}, Index movement: {index_movement}")
+            print(f"    [DEBUG] Finger count: {count}")
 
-        # Priority 1: FIST (DUCK) - Most distinctive
+        # Priority 1: FIST (DUCK) - All fingers closed
         if count == 0:
             if self.debug:
                 print(f"    [DEBUG] → FIST detected = DUCK")
             return "DUCK"
 
-        # Priority 2: INDEX ONLY (JUMP)
+        # Priority 2: INDEX ONLY (JUMP) - Only index finger up
         if count == 1 and fingers['index']:
             if self.debug:
                 print(f"    [DEBUG] → INDEX FINGER UP = JUMP")
             return "JUMP"
 
-        # Priority 3: INDEX MOVEMENT (LEFT/RIGHT)
-        # Detect movement when 2+ fingers are extended
-        if count >= 2:
-            if index_movement == "LEFT":
-                if self.debug:
-                    print(f"    [DEBUG] → Index moving LEFT = LEFT")
-                return "LEFT"
-            elif index_movement == "RIGHT":
-                if self.debug:
-                    print(f"    [DEBUG] → Index moving RIGHT = RIGHT")
-                return "RIGHT"
+        # Priority 3: VICTORY (LEFT) - Index and middle fingers up
+        if count == 2 and fingers['index'] and fingers['middle']:
+            if self.debug:
+                print(f"    [DEBUG] → VICTORY SIGN = LEFT")
+            return "LEFT"
 
-        # Default: IDLE
+        # Priority 4: I LOVE YOU (RIGHT) - Thumb, index, and pinky up
+        if count == 3 and fingers['thumb'] and fingers['index'] and fingers['pinky']:
+            if self.debug:
+                print(f"    [DEBUG] → I LOVE YOU SIGN = RIGHT")
+            return "RIGHT"
+
+        # Default: IDLE (open palm or other configurations)
         if self.debug:
             print(f"    [DEBUG] → IDLE")
         return "IDLE"
@@ -194,10 +147,6 @@ class PoseGestureController:
 
             if self.frames_without_hand == 30:
                 print("  ⚠ No hand detected - show your hand to the camera")
-
-            # Reset index tracking when hand is lost
-            self.prev_index_x = None
-            self.prev_index_y = None
 
             return "IDLE", None
 
@@ -263,7 +212,12 @@ class PoseGestureController:
         for point in points:
             cv2.circle(frame, point, 4, (255, 0, 255), -1)
 
-        # Highlight index finger tip
+        # Highlight key fingertips based on common gestures
+        # Index finger (yellow)
         cv2.circle(frame, points[8], 8, (0, 255, 255), -1)
+        # Middle finger (cyan)
+        cv2.circle(frame, points[12], 8, (255, 255, 0), -1)
+        # Pinky (magenta)
+        cv2.circle(frame, points[20], 8, (255, 0, 255), -1)
 
         return frame
