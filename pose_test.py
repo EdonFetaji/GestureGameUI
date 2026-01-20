@@ -1,6 +1,6 @@
 """
 Pose-Based Gesture Tester
-Test the new stable pose recognition system
+Test the new stable pose recognition system with INDEX FINGER MOVEMENT controls
 """
 
 import cv2
@@ -13,12 +13,12 @@ def draw_instructions(frame, current_test, test_passed):
     """Draw clear instructions for each pose"""
     h, w = frame.shape[:2]
 
-    # Instructions for each gesture
+    # Instructions for each gesture - UPDATED for index finger movement
     instructions = {
         0: ("DUCK", "Make a FIST (close all fingers)", "👊"),
         1: ("JUMP", "Point with INDEX finger only", "☝️"),
-        2: ("LEFT", "Move hand to LEFT side of screen", "←"),
-        3: ("RIGHT", "Move hand to RIGHT side of screen", "→"),
+        2: ("LEFT", "Move INDEX FINGER to the LEFT", "👈"),
+        3: ("RIGHT", "Move INDEX FINGER to the RIGHT", "👉"),
     }
 
     if current_test >= 4:
@@ -47,11 +47,16 @@ def draw_instructions(frame, current_test, test_passed):
 
     # Instructions
     cv2.putText(frame, instruction, (20, 140),
-               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (200, 200, 200), 1)
+               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+
+    # Additional hint for movement gestures
+    if current_test in [2, 3]:
+        cv2.putText(frame, "(Keep 2+ fingers open)", (20, 170),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
 
     # Emoji/visual hint
-    cv2.putText(frame, emoji, (20, 190),
-               cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 200, 0), 3)
+    cv2.putText(frame, emoji, (20, 205),
+               cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 200, 0), 2)
 
     # Status
     status = "✓ PASSED!" if test_passed[current_test] else "Waiting..."
@@ -59,22 +64,100 @@ def draw_instructions(frame, current_test, test_passed):
     cv2.putText(frame, status, (w - 200, 50),
                cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
 
-    # Zone indicators for LEFT/RIGHT tests
-    # FIXED: Swap zones to match mirrored camera view + WIDER zones
-    if current_test in [2, 3]:
-        # Draw LEFT zone (on RIGHT side of mirrored camera) - 60-100%
-        cv2.rectangle(frame, (int(w * 0.60), 0), (w, h), (0, 100, 255), 3)
-        cv2.putText(frame, "LEFT ZONE", (w - 180, h - 20),
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 100, 255), 2)
-        cv2.putText(frame, "Move hand HERE", (w - 220, h - 50),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 100, 255), 1)
+    # Visual guides for movement (LEFT/RIGHT tests)
+    if current_test == 2:  # LEFT test
+        # Draw arrow showing LEFT movement
+        center_y = h // 2
+        arrow_start_x = w - 150
+        arrow_end_x = w - 350
 
-        # Draw RIGHT zone (on LEFT side of mirrored camera) - 0-40%
-        cv2.rectangle(frame, (0, 0), (int(w * 0.40), h), (255, 100, 0), 3)
-        cv2.putText(frame, "RIGHT ZONE", (20, h - 20),
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 100, 0), 2)
-        cv2.putText(frame, "Move hand HERE", (20, h - 50),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 100, 0), 1)
+        cv2.arrowedLine(frame, (arrow_start_x, center_y), (arrow_end_x, center_y),
+                       (0, 255, 255), 8, tipLength=0.3)
+
+        cv2.putText(frame, "Move index finger", (arrow_end_x - 50, center_y - 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(frame, "THIS WAY", (arrow_end_x, center_y + 40),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
+    elif current_test == 3:  # RIGHT test
+        # Draw arrow showing RIGHT movement
+        center_y = h // 2
+        arrow_start_x = 150
+        arrow_end_x = 350
+
+        cv2.arrowedLine(frame, (arrow_start_x, center_y), (arrow_end_x, center_y),
+                       (255, 128, 0), 8, tipLength=0.3)
+
+        cv2.putText(frame, "Move index finger", (arrow_start_x - 50, center_y - 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 128, 0), 2)
+        cv2.putText(frame, "THIS WAY", (arrow_start_x + 50, center_y + 40),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 128, 0), 2)
+
+    return frame
+
+
+def draw_index_movement_indicator(frame, landmarks, recognizer):
+    """Draw a visual indicator showing index finger movement"""
+    if landmarks is None:
+        return frame
+
+    h, w, _ = frame.shape
+
+    # Get index finger tip
+    index_tip = landmarks.landmark[8]
+
+    # Convert to screen coordinates (with flip correction)
+    index_x = int(w - (index_tip.x * w))
+    index_y = int(index_tip.y * h)
+
+    # Draw large circle at index finger tip
+    cv2.circle(frame, (index_x, index_y), 15, (0, 255, 255), -1)
+    cv2.circle(frame, (index_x, index_y), 18, (255, 255, 255), 2)
+
+    # Draw previous position if available
+    if recognizer.prev_index_x is not None and recognizer.prev_index_y is not None:
+        prev_x = int(w - (recognizer.prev_index_x * w))
+        prev_y = int(recognizer.prev_index_y * h)
+
+        # Draw line showing movement
+        cv2.line(frame, (prev_x, prev_y), (index_x, index_y),
+                (255, 255, 0), 3)
+
+        # Calculate and display delta
+        delta_x = index_tip.x - recognizer.prev_index_x
+        delta_y = index_tip.y - recognizer.prev_index_y
+
+        # Determine direction
+        if abs(delta_x) > recognizer.movement_threshold:
+            if delta_x < -recognizer.movement_threshold:
+                direction = "LEFT"
+                color = (0, 255, 255)
+            elif delta_x > recognizer.movement_threshold:
+                direction = "RIGHT"
+                color = (255, 128, 0)
+            else:
+                direction = "NEUTRAL"
+                color = (150, 150, 150)
+        else:
+            direction = "NEUTRAL"
+            color = (150, 150, 150)
+
+        # Draw direction label
+        label_y = index_y - 40
+
+        # Background for text
+        text_size = cv2.getTextSize(direction, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
+        cv2.rectangle(frame,
+                     (index_x - text_size[0]//2 - 5, label_y - text_size[1] - 5),
+                     (index_x + text_size[0]//2 + 5, label_y + 5),
+                     (0, 0, 0), -1)
+
+        cv2.putText(frame, direction, (index_x - text_size[0]//2, label_y),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+
+        # Show delta values for debugging
+        cv2.putText(frame, f"dX: {delta_x:.3f}", (index_x - 60, label_y + 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
 
     return frame
 
@@ -83,8 +166,13 @@ def main():
     print("=" * 60)
     print("POSE-BASED GESTURE TESTER")
     print("=" * 60)
-    print("\nThis uses STATIC POSES - much more stable!")
-    print("Press Q to quit anytime\n")
+    print("\nThis uses INDEX FINGER MOVEMENT detection!")
+    print("Gestures:")
+    print("  1. FIST (all fingers closed)")
+    print("  2. INDEX finger pointing up")
+    print("  3. Move INDEX FINGER to the LEFT")
+    print("  4. Move INDEX FINGER to the RIGHT")
+    print("\nPress Q to quit anytime\n")
 
     recognizer = PoseGestureController(debug=True)
     perf = PerformanceTracker()
@@ -104,11 +192,18 @@ def main():
         if not ret:
             break
 
+        # Flip frame for mirror view
+        frame = cv2.flip(frame, 1)
+
         gesture, landmarks = recognizer.process_frame(frame)
 
         # Draw hand skeleton
         if landmarks:
             frame = recognizer.draw_hand_skeleton(frame, landmarks)
+
+            # Draw index movement indicator for LEFT/RIGHT tests
+            if current_test in [2, 3]:
+                frame = draw_index_movement_indicator(frame, landmarks, recognizer)
 
         # Check if correct gesture detected
         if gesture == test_sequence[current_test] and not test_passed[current_test]:
@@ -145,8 +240,8 @@ def main():
         print("\n" + "=" * 60)
         print("ALL TESTS PASSED! 🎉")
         print("=" * 60)
-        print("\nYour pose-based gestures work perfectly!")
-        print("Now you can use pose_main.py to play games!")
+        print("\nYour INDEX FINGER MOVEMENT gestures work perfectly!")
+        print("Now you can use main.py to play games!")
         print("=" * 60 + "\n")
 
         while True:
@@ -154,6 +249,7 @@ def main():
             if not ret:
                 break
 
+            frame = cv2.flip(frame, 1)
             display = draw_instructions(frame, 4, test_passed)
             cv2.imshow("Pose Gesture Tester", display)
 

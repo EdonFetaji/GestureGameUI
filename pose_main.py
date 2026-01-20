@@ -7,58 +7,9 @@ from pose_gesture_controller import PoseGestureController
 from ui_overlay import UIOverlay
 from controller import GameController
 from performance_tracker import PerformanceTracker
+from ui_controller import UIController
 import cv2
 import time
-
-
-def draw_pose_ui(frame, gesture, fps, latency, enabled, profile):
-    """Enhanced UI with pose visualization"""
-    h, w = frame.shape[:2]
-
-    # Status panel
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (10, 10), (350, 200), (40, 40, 40), -1)
-    frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
-
-    # Current gesture - BIG and clear
-    gesture_color = (0, 255, 0) if gesture != "IDLE" else (100, 100, 100)
-    cv2.putText(frame, f"Gesture: {gesture}", (20, 50),
-                cv2.FONT_HERSHEY_DUPLEX, 1.0, gesture_color, 2)
-
-    # Profile
-    cv2.putText(frame, f"Profile: {profile}", (20, 90),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-
-    # Control status
-    status_color = (0, 255, 0) if enabled else (100, 100, 100)
-    cv2.putText(frame, f"Control: {'ENABLED' if enabled else 'DISABLED'}",
-                (20, 125), cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_color, 1)
-
-    # Performance
-    cv2.putText(frame, f"FPS: {fps:.1f} | Latency: {latency:.0f}ms",
-                (20, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
-
-    # Controls help
-    cv2.putText(frame, "SPACE=Toggle  P=Profile  Q=Quit",
-                (20, 185), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (150, 150, 150), 1)
-
-    # Gesture guide
-    guide_y = h - 160
-    cv2.rectangle(overlay, (10, guide_y - 10), (300, h - 10), (30, 30, 30), -1)
-    frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
-
-    cv2.putText(frame, "POSE GUIDE:", (20, guide_y + 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 1)
-    cv2.putText(frame, "Fist = DUCK", (20, guide_y + 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-    cv2.putText(frame, "Index up = JUMP", (20, guide_y + 60),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-    cv2.putText(frame, "Hand left = LEFT", (20, guide_y + 80),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-    cv2.putText(frame, "Hand right = RIGHT", (20, guide_y + 100),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
-
-    return frame
 
 
 def main():
@@ -77,10 +28,12 @@ def main():
     print("  Hand on RIGHT side  → RIGHT")
     print("=" * 60)
 
+    # Initialize all components
     recognizer = PoseGestureController(debug=False)
     ui = UIOverlay()
     controller = GameController()
     perf = PerformanceTracker()
+    ui_controller = UIController()  # New UI controller
 
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -98,25 +51,24 @@ def main():
             print("ERROR: Failed to read from camera!")
             break
 
-        # FIX: Flip frame horizontally to correct mirrored skeleton drawing
+        # Flip frame horizontally for natural mirror view
         frame = cv2.flip(frame, 1)
 
-        # Process gesture
+        # Process gesture recognition
         gesture, landmarks = recognizer.process_frame(frame)
         latency = perf.get_latency_ms(start_time)
 
-        # Draw hand skeleton
-        if landmarks:
-            frame = recognizer.draw_hand_skeleton(frame, landmarks)
-
-        # Execute gesture if enabled
+        # Execute gesture if control is enabled
         if ui.enabled and gesture != "IDLE":
             print(f"  → Executing {gesture} on {ui.game_profile}")
             controller.execute_gesture(gesture, ui.game_profile)
 
-        # Render UI
-        display = draw_pose_ui(frame, gesture, perf.get_fps(), latency,
-                               ui.enabled, ui.game_profile)
+        # Render complete UI using the UI controller
+        display = ui_controller.render_complete_ui(
+            frame, gesture, landmarks, perf.get_fps(),
+            latency, ui.enabled, ui.game_profile
+        )
+
         cv2.imshow("Pose-Based Gesture Control", display)
 
         # Handle keyboard input
