@@ -98,6 +98,9 @@ def main():
             print("ERROR: Failed to read from camera!")
             break
 
+        # FIX: Flip frame horizontally to correct mirrored skeleton drawing
+        frame = cv2.flip(frame, 1)
+
         # Process gesture
         gesture, landmarks = recognizer.process_frame(frame)
         latency = perf.get_latency_ms(start_time)

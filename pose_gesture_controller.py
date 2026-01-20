@@ -192,19 +192,41 @@ class PoseGestureController:
         return "IDLE", landmarks
 
     def draw_hand_skeleton(self, frame, landmarks):
-        """Draw hand landmarks for visual feedback"""
-        if landmarks is None:
-            return frame
+        """Draw hand skeleton with coordinates flipped to correct mirroring"""
+        h, w, _ = frame.shape
 
-        mp_drawing = mp.solutions.drawing_utils
-        mp_drawing_styles = mp.solutions.drawing_styles
+        # Hand landmark connections
+        connections = [
+            # Thumb
+            (0, 1), (1, 2), (2, 3), (3, 4),
+            # Index finger
+            (0, 5), (5, 6), (6, 7), (7, 8),
+            # Middle finger
+            (0, 9), (9, 10), (10, 11), (11, 12),
+            # Ring finger
+            (0, 13), (13, 14), (14, 15), (15, 16),
+            # Pinky
+            (0, 17), (17, 18), (18, 19), (19, 20),
+            # Palm
+            (5, 9), (9, 13), (13, 17)
+        ]
 
-        mp_drawing.draw_landmarks(
-            frame,
-            landmarks,
-            self.mp_hands.HAND_CONNECTIONS,
-            mp_drawing_styles.get_default_hand_landmarks_style(),
-            mp_drawing_styles.get_default_hand_connections_style()
-        )
+        # Extract points with FLIPPED x-coordinates
+        points = []
+        for lm in landmarks.landmark:
+            # FIX: Flip x-coordinate by subtracting from width
+            x = int(w - (lm.x * w))  # This mirrors the x-coordinate
+            y = int(lm.y * h)
+            points.append((x, y))
+
+        # Draw connections
+        for connection in connections:
+            start_idx, end_idx = connection
+            cv2.line(frame, points[start_idx], points[end_idx],
+                     (0, 255, 0), 2)
+
+        # Draw landmarks
+        for point in points:
+            cv2.circle(frame, point, 4, (255, 0, 255), -1)
 
         return frame
