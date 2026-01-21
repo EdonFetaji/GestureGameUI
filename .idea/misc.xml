@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (GestureControlGameUI)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (GestureControlGameUI)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (GestureGameUI)" project-jdk-type="Python SDK" />
 </project>
