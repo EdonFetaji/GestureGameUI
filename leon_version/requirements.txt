@@ -1,6 +1,0 @@
-mediapipe
-opencv-python
-numpy
-pynput
-pyside6
-pyinstaller
